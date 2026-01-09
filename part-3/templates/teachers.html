@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teachers</title>
+</head>
+<body>
+
+<h1>Teachers & Their Courses</h1>
+
+{% for teacher in teachers %}
+    <h2>{{ teacher.name }} ({{ teacher.email }})</h2>
+
+    <ul>
+        {% for course in teacher.courses %}
+            <li>{{ course.name }}</li>
+        {% else %}
+            <li>No courses assigned</li>
+        {% endfor %}
+    </ul>
+{% endfor %}
+
+</body>
+</html>

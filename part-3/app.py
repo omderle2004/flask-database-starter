@@ -32,29 +32,46 @@ db = SQLAlchemy(app)  # Initialize SQLAlchemy with app
 # MODELS (Python Classes = Database Tables)
 # =============================================================================
 
-class Course(db.Model):  # Course table
-    id = db.Column(db.Integer, primary_key=True)  # Auto-increment ID
-    name = db.Column(db.String(100), nullable=False)  # Course name
-    description = db.Column(db.Text)  # Optional description
+# =============================================================================
+# MODELS
+# =============================================================================
 
-    # Relationship: One Course has Many Students
+class Teacher(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+
+    # One teacher -> many courses
+    courses = db.relationship('Course', backref='teacher', lazy=True)
+
+    def __repr__(self):
+        return f'<Teacher {self.name}>'
+
+
+class Course(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+
+    # Foreign key to Teacher
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
+
+    # One course -> many students
     students = db.relationship('Student', backref='course', lazy=True)
 
-    def __repr__(self):  # How to display this object
+    def __repr__(self):
         return f'<Course {self.name}>'
 
 
-class Student(db.Model):  # Student table
+class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)  # unique=True means no duplicates
+    email = db.Column(db.String(120), unique=True, nullable=False)
 
-    # Foreign Key: Links student to a course
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
 
     def __repr__(self):
         return f'<Student {self.name}>'
-
 
 # =============================================================================
 # ROUTES - Using ORM instead of raw SQL
@@ -138,26 +155,55 @@ def add_course():
 
     return render_template('add_course.html')
 
+@app.route('/queries-demo')
+def queries_demo():
+    return {
+        "filter": [s.name for s in Student.query.filter(Student.name.like('%a%')).all()],
+        "order_by": [s.name for s in Student.query.order_by(Student.name).all()],
+        "limit": [s.name for s in Student.query.limit(2).all()]
+    }
+
+@app.route('/teachers')
+def teachers():
+    teachers = Teacher.query.all()
+    return render_template('teachers.html', teachers=teachers)
 
 # =============================================================================
 # CREATE TABLES AND ADD SAMPLE DATA
 # =============================================================================
 
 def init_db():
-    """Create tables and add sample courses if empty"""
     with app.app_context():
-        db.create_all()  # Create all tables based on models
+        db.create_all()
 
-        # Add sample courses if none exist
-        if Course.query.count() == 0:
-            sample_courses = [
-                Course(name='Python Basics', description='Learn Python programming fundamentals'),
-                Course(name='Web Development', description='HTML, CSS, JavaScript and Flask'),
-                Course(name='Data Science', description='Data analysis with Python'),
+        if Teacher.query.count() == 0:
+            teachers = [
+                Teacher(name='Mr. Sharma', email='sharma@school.com'),
+                Teacher(name='Ms. Patil', email='patil@school.com'),
             ]
-            db.session.add_all(sample_courses)  # Add multiple at once
+            db.session.add_all(teachers)
             db.session.commit()
-            print('Sample courses added!')
+
+        if Course.query.count() == 0:
+            courses = [
+                Course(
+                    name='Python Basics',
+                    description='Learn Python fundamentals',
+                    teacher_id=1
+                ),
+                Course(
+                    name='Web Development',
+                    description='HTML, CSS, Flask',
+                    teacher_id=2
+                ),
+                Course(
+                    name='Data Science',
+                    description='Data analysis with Python',
+                    teacher_id=1
+                )
+            ]
+            db.session.add_all(courses)
+            db.session.commit()
 
 
 if __name__ == '__main__':

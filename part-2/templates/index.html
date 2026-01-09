@@ -22,6 +22,11 @@
     </style>
 </head>
 <body>
+    <form method="GET" action="{{ url_for('index') }}" style="margin-bottom: 20px;">
+    <input type="text" name="q" placeholder="Search by name">
+    <button class="btn btn-edit">Search</button>
+    </form>
+
     <h1>Student Management (Part 2 - Full CRUD)</h1>
 
     <!-- Flash Messages -->

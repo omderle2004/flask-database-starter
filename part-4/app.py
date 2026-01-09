@@ -51,31 +51,31 @@ class Book(db.Model):
 # REST API ROUTES
 # =============================================================================
 
-# GET /api/books - Get all books
 @app.route('/api/books', methods=['GET'])
 def get_books():
-    books = Book.query.all()
-    return jsonify({  # Return JSON response
-        'success': True,
-        'count': len(books),
-        'books': [book.to_dict() for book in books]  # List comprehension to convert all
-    })
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 5, type=int)
 
+    sort = request.args.get('sort', 'id')
+    order = request.args.get('order', 'asc')
 
-# GET /api/books/<id> - Get single book
-@app.route('/api/books/<int:id>', methods=['GET'])
-def get_book(id):
-    book = Book.query.get(id)
+    query = Book.query
 
-    if not book:
-        return jsonify({
-            'success': False,
-            'error': 'Book not found'
-        }), 404  # Return 404 status code
+    # Sorting
+    if hasattr(Book, sort):
+        column = getattr(Book, sort)
+        if order == 'desc':
+            column = column.desc()
+        query = query.order_by(column)
+
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
     return jsonify({
         'success': True,
-        'book': book.to_dict()
+        'page': page,
+        'per_page': per_page,
+        'total': pagination.total,
+        'books': [book.to_dict() for book in pagination.items]
     })
 
 
@@ -204,81 +204,95 @@ def search_books():
 @app.route('/')
 def index():
     return '''
-    <html>
-    <head>
-        <title>Part 4 - REST API</title>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 40px; background: #1a1a2e; color: #eee; }
-            h1 { color: #e94560; }
-            .endpoint { background: #16213e; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #e94560; }
-            .method { display: inline-block; padding: 4px 8px; border-radius: 4px; font-weight: bold; margin-right: 10px; }
-            .get { background: #27ae60; }
-            .post { background: #f39c12; }
-            .put { background: #3498db; }
-            .delete { background: #e74c3c; }
-            code { background: #0f3460; padding: 2px 6px; border-radius: 3px; }
-            pre { background: #0f3460; padding: 15px; border-radius: 8px; overflow-x: auto; }
-            a { color: #e94560; }
-        </style>
-    </head>
-    <body>
-        <h1>Part 4: REST API Demo</h1>
-        <p>This is a JSON API - use curl, Postman, or JavaScript fetch() to test!</p>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Book API Frontend</title>
+    <style>
+        body { font-family: Arial; margin: 40px; background: #f4f6f8; }
+        h1 { color: #333; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { padding: 12px; border: 1px solid #ddd; }
+        th { background: #4CAF50; color: white; cursor: pointer; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        button { padding: 8px 14px; margin: 10px 5px; }
+    </style>
+</head>
+<body>
 
-        <h2>API Endpoints:</h2>
+<h1>📚 Book Library (Flask REST API)</h1>
 
-        <div class="endpoint">
-            <span class="method get">GET</span>
-            <code>/api/books</code> - Get all books
-            <br><a href="/api/books" target="_blank">Try it →</a>
-        </div>
+<table>
+    <thead>
+        <tr>
+            <th onclick="loadBooks('title')">Title</th>
+            <th onclick="loadBooks('author')">Author</th>
+            <th onclick="loadBooks('year')">Year</th>
+            <th>ISBN</th>
+        </tr>
+    </thead>
+    <tbody id="bookTable"></tbody>
+</table>
 
-        <div class="endpoint">
-            <span class="method get">GET</span>
-            <code>/api/books/&lt;id&gt;</code> - Get single book
-        </div>
+<div>
+    <button onclick="prevPage()">⬅ Prev</button>
+    <span id="pageInfo"></span>
+    <button onclick="nextPage()">Next ➡</button>
+</div>
 
-        <div class="endpoint">
-            <span class="method post">POST</span>
-            <code>/api/books</code> - Create new book
-        </div>
+<script>
+let page = 1;
+let sort = 'id';
+let order = 'asc';
 
-        <div class="endpoint">
-            <span class="method put">PUT</span>
-            <code>/api/books/&lt;id&gt;</code> - Update book
-        </div>
+function loadBooks(sortField = null) {
+    if (sortField) {
+        sort = sortField;
+        order = order === 'asc' ? 'desc' : 'asc';
+    }
 
-        <div class="endpoint">
-            <span class="method delete">DELETE</span>
-            <code>/api/books/&lt;id&gt;</code> - Delete book
-        </div>
+    fetch(`/api/books?page=${page}&per_page=5&sort=${sort}&order=${order}`)
+        .then(res => res.json())
+        .then(data => {
+            const table = document.getElementById('bookTable');
+            table.innerHTML = '';
 
-        <div class="endpoint">
-            <span class="method get">GET</span>
-            <code>/api/books/search?q=&lt;title&gt;&author=&lt;name&gt;</code> - Search books
-        </div>
+            data.books.forEach(book => {
+                table.innerHTML += `
+                    <tr>
+                        <td>${book.title}</td>
+                        <td>${book.author}</td>
+                        <td>${book.year ?? '-'}</td>
+                        <td>${book.isbn ?? '-'}</td>
+                    </tr>
+                `;
+            });
 
-        <h2>Test with curl:</h2>
-        <pre>
-# Get all books
-curl http://localhost:5000/api/books
+            document.getElementById('pageInfo').innerText =
+                `Page ${page} | Total Books: ${data.total}`;
+        });
+}
 
-# Create a book
-curl -X POST http://localhost:5000/api/books \\
-  -H "Content-Type: application/json" \\
-  -d '{"title": "Flask Web Development", "author": "Miguel Grinberg", "year": 2018}'
+function nextPage() {
+    page++;
+    loadBooks();
+}
 
-# Update a book
-curl -X PUT http://localhost:5000/api/books/1 \\
-  -H "Content-Type: application/json" \\
-  -d '{"year": 2023}'
+function prevPage() {
+    if (page > 1) {
+        page--;
+        loadBooks();
+    }
+}
 
-# Delete a book
-curl -X DELETE http://localhost:5000/api/books/1
-        </pre>
-    </body>
-    </html>
-    '''
+loadBooks();
+</script>
+
+</body>
+</html>
+'''
+
+
 
 
 # =============================================================================

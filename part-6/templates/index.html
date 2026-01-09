@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Product Inventory</title>
+</head>
+<body>
+
+<h1>📦 Product Inventory</h1>
+
+<!-- DASHBOARD -->
+<p><strong>Total Products:</strong> {{ total_products }}</p>
+<p><strong>Total Inventory Value:</strong> ₹{{ total_value }}</p>
+
+<!-- SEARCH -->
+<form method="GET">
+    <input type="text" name="search" placeholder="Search product">
+    <button type="submit">Search</button>
+</form>
+
+<br>
+<a href="/add">+ Add Product</a>
+
+<table border="1" cellpadding="10">
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Quantity</th>
+        <th>Price</th>
+        <th>Actions</th>
+    </tr>
+
+    {% for product in products %}
+    <tr>
+        <td>{{ product.id }}</td>
+        <td>{{ product.name }}</td>
+        <td>{{ product.quantity }}</td>
+        <td>₹{{ product.price }}</td>
+        <td>
+            <a href="/edit/{{ product.id }}">Edit</a> |
+            <a href="/delete/{{ product.id }}" onclick="return confirm('Delete?')">Delete</a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+</body>
+</html>

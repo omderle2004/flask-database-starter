@@ -144,7 +144,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 | Use Case | Development, Small apps | Production | Production |
 | Performance | Fast for small data | Excellent | Excellent |
 
-## Exercise
+##Exercise
 1. Set up PostgreSQL locally and connect your app
 2. Compare query performance between SQLite and PostgreSQL
 3. Add connection error handling

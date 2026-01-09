@@ -13,6 +13,7 @@ What You'll Learn:
 Prerequisites: Complete all previous parts
 Install: pip install psycopg2-binary pymysql python-dotenv
 """
+import time
 
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
@@ -106,25 +107,43 @@ def delete_product(id):
     flash('Product deleted!', 'danger')
     return redirect(url_for('index'))
 
+@app.route('/performance-test')
+def performance_test():
+    start = time.time()
+    products = Product.query.all()
+    end = time.time()
+
+    return {
+        "database": DATABASE_URL,
+        "records": len(products),
+        "time_taken_seconds": round(end - start, 6)
+    }
+
 
 # =============================================================================
 # INITIALIZE DATABASE
 # =============================================================================
 
-def init_db():
-    with app.app_context():
-        db.create_all()
-        print(f'Database initialized! Using: {DATABASE_URL}')
+from sqlalchemy.exc import OperationalError
 
-        if Product.query.count() == 0:
-            sample = [
-                Product(name='Laptop', price=999.99, stock=10, description='High-performance laptop'),
-                Product(name='Mouse', price=29.99, stock=50, description='Wireless mouse'),
-                Product(name='Keyboard', price=79.99, stock=30, description='Mechanical keyboard'),
-            ]
-            db.session.add_all(sample)
-            db.session.commit()
-            print('Sample products added!')
+def init_db():
+    try:
+        with app.app_context():
+            db.create_all()
+            print(f"✅ Connected to DB: {DATABASE_URL}")
+
+            if Product.query.count() == 0:
+                sample = [
+                    Product(name='Laptop', price=999.99, stock=10),
+                    Product(name='Mouse', price=29.99, stock=50),
+                ]
+                db.session.add_all(sample)
+                db.session.commit()
+                print("📦 Sample data added")
+
+    except OperationalError as e:
+        print("❌ Database connection failed")
+        print("Reason:", e)
 
 
 if __name__ == '__main__':
